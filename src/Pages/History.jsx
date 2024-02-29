@@ -3,7 +3,7 @@ import React from 'react'
 const History = () => {
   return (
     <div>
-        
+        <h1>Your recent searches :</h1>
       
     </div>
   )
