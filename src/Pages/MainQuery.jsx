@@ -1,28 +1,19 @@
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import Modal from "../Components/modal/Modal";
 
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import History from "./Pages/History";
-import Header from "./Components/header/Header";
-import Main from "./Pages/Main";
+import "./main.css";
 
-const App = () => {
-  const [searchHistory, setSearchHistory] = useState(() => {
-    // Retrieve history from local storage or set to an empty array if none
-    const history = localStorage.getItem("searchHistory");
-    return history ? JSON.parse(history) : [];
-  });
+const Main = () => {
   const [photos, setPhotos] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   const [allPhotosLoaded, setAllPhotosLoaded] = useState(false);
   const [photoStats, setPhotoStats] = useState(null);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [isHistoryVisible, setHistoryVisible] = useState(false);
-  console.log(searchHistory);
   const openModal = (photo) => {
-    // console.log("photo:", photo);
+    console.log("photo:", photo);
     setSelectedPhoto(photo);
     fetchPhotoStats(photo.id);
     setModalVisible(true);
@@ -78,19 +69,8 @@ const App = () => {
     const cacheKey = `photos-${query}-${page}`;
     const cachedData = localStorage.getItem(cacheKey);
     console.log("cacheKey:", cacheKey, "cachedData:", cachedData);
-
-    try {
-      if (cachedData !== null) {
-        const parsedData = JSON.parse(cachedData);
-        // Assuming setPhotos is a function to update your state with the cached photos
-        setPhotos(parsedData);
-        setPage((prevPage) => prevPage + 1);
-        return; // Stop execution as cached data is used
-      }
-    } catch (error) {
-      console.error("Error parsing cached photos:", error);
-      // Optionally handle corrupted data, e.g., remove the corrupted item
-      localStorage.removeItem(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData);
     }
     setLoading(true);
     let url = `https://api.unsplash.com/photos?per_page=20&page=${page}&order_by=popular`;
@@ -147,19 +127,7 @@ const App = () => {
   }, [query]); // Dependency on query to trigger debounced fetch
 
   const handleSearchInput = (event) => {
-    const newQuery = event.target.value;
-    setTimeout(() => {
-      if (newQuery.length > 2) {
-        setQuery(newQuery);
-
-        // Update search history if the query is not empty and not already included
-        if (newQuery.trim() && !searchHistory.includes(newQuery)) {
-          const updatedHistory = [...searchHistory, newQuery];
-          setSearchHistory(updatedHistory);
-          localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
-        }
-      }
-    }, 850);
+    setQuery(event.target.value);
   };
 
   // Effect for infinite scrolling
@@ -176,51 +144,39 @@ const App = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, fetchPhotos, allPhotosLoaded]);
-  const onHistoryItemClick = (query) => {
-    setHistoryVisible(true);
-    setQuery(query);
-  };
+
   return (
-    <Router>
-      <div>
-        <Header />
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <Main
-                photos={photos}
-                photoStats={photoStats}
-                closeModal={closeModal}
-                openModal={openModal}
-                selectedPhoto={selectedPhoto}
-                handleSearchInput={handleSearchInput}
-                loading={loading}
-                modalVisible={modalVisible}
-              />
-            }
+    <div className="main-div">
+      <input
+        className="search"
+        type="text"
+        placeholder="Search"
+        onChange={handleSearchInput}
+      />
+      <div className="photos-container">
+        {photos.map((photo) => (
+          <img
+            key={photo.id}
+            src={photo.urls.small}
+            alt={photo.description || "Photo"}
+            onClick={() => openModal(photo)}
           />
-          <Route
-            path="/history"
-            element={
-              <History
-                photos={photos}
-                photoStats={photoStats}
-                closeModal={closeModal}
-                openModal={openModal}
-                selectedPhoto={selectedPhoto}
-                loading={loading}
-                modalVisible={modalVisible}
-                searchHistory={searchHistory}
-                onHistoryItemClick={onHistoryItemClick}
-                isHistoryVisible={isHistoryVisible}
-              />
-            }
-          />
-        </Routes>
+        ))}
+        {loading && (
+          <div className="loading">
+            <h1>Loading...</h1>
+          </div>
+        )}
       </div>
-    </Router>
+
+      <Modal
+        visible={modalVisible}
+        photo={selectedPhoto}
+        photoStats={photoStats}
+        closeModal={closeModal}
+      />
+    </div>
   );
 };
 
-export default App;
+export default Main;
